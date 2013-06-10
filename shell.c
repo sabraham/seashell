@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 
 #define MAXLINE 1024
-#define MAXARGS 513
+#define MAXARGS (MAXLINE/2+1)
 
 pid_t Fork (void);
 int Execve (const char *filename, char *argv[],
@@ -15,7 +15,7 @@ void unix_error(char *msg); /* unix-style error */ // grifted from CSAPP
 int parsecmd(char *cmdline, char *argv[], char sep);
 void evalcmd(char *argv[], int bg);
 
-extern char **environ;
+extern char **environ; // array of environment variables from unistd.h
 
 int main () {
   char cmdline[MAXLINE];
@@ -56,20 +56,22 @@ int Waitpid (pid_t pid, int *status, int options) {
 }
 
 int parsecmd (char *cmdline, char *argv[], char sep) {
-  int argc = 0, bg = 0, len = strlen(cmdline);
+  int argc = 0, bg = 0, len = strnlen(cmdline, MAXLINE);
   cmdline[len - 1] = sep; // loop below search & replaces sep with \0
   if (cmdline[len - 2] == '&') {
     bg = 1;
     cmdline[len - 2] = sep;
   }
   char *b = cmdline, *e; // beginning and end arg pointers
-  while ((e = strchr(b, sep))) { // find separator
-    argv[argc++] = b; // set argv
+  while ((e = strchr(b, sep)) && argc < MAXARGS-1) { // find separator
+    argv[argc] = b; // set argv
     *e = '\0'; // null terminate char array
     b = e + 1; // move beginning to end
     while (*b == sep)
       ++b; // get first non-space char
+    argc++;
   }
+  argv[argc] = 0; // execve requries argv to be null-terminated
   return bg;
 }
 
