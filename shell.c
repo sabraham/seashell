@@ -56,7 +56,7 @@ int Waitpid (pid_t pid, int *status, int options) {
 }
 
 int parsecmd (char *cmdline, char *argv[], char sep) {
-  int argc = 0, bg = 0, len = strlen(cmdline);
+  int argc = 0, bg = 0, len = strnlen(cmdline, MAXLINE);
   cmdline[len - 1] = sep; // loop below search & replaces sep with \0
   if (cmdline[len - 2] == '&') {
     bg = 1;
