@@ -63,13 +63,15 @@ int parsecmd (char *cmdline, char *argv[], char sep) {
     cmdline[len - 2] = sep;
   }
   char *b = cmdline, *e; // beginning and end arg pointers
-  while ((e = strchr(b, sep)) && argc < MAXARGS) { // find separator
-    argv[argc++] = b; // set argv
+  while ((e = strchr(b, sep)) && argc < MAXARGS-1) { // find separator
+    argv[argc] = b; // set argv
     *e = '\0'; // null terminate char array
     b = e + 1; // move beginning to end
     while (*b == sep)
       ++b; // get first non-space char
+    argc++;
   }
+  argv[argc] = 0; // execve requries argv to be null-terminated
   return bg;
 }
 
