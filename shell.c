@@ -51,8 +51,13 @@ int Execve (const char *filename, char *argv[],
 }
 
 int Waitpid (pid_t pid, int *status, int options) {
-  if (waitpid(pid, status, options) < 0)
-    unix_error("Waitpid error");
+  pid_t ret;
+  while ((ret = waitpid(pid, status, options)) < 0) {
+    if (errno != EINTR) {
+      unix_error("Waitpid error");
+    }
+  }
+  return ret;
 }
 
 int parsecmd (char *cmdline, char *argv[], char sep) {
