@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 
 #define MAXLINE 1024
-#define MAXARGS 513
+#define MAXARGS (MAXLINE/2+1)
 
 pid_t Fork (void);
 int Execve (const char *filename, char *argv[],
