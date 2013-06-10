@@ -15,7 +15,7 @@ void unix_error(char *msg); /* unix-style error */ // grifted from CSAPP
 int parsecmd(char *cmdline, char *argv[], char sep);
 void evalcmd(char *argv[], int bg);
 
-extern char **environ;
+extern char **environ; // array of environment variables from unistd.h
 
 int main () {
   char cmdline[MAXLINE];
