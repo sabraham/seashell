@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <dirent.h>
 
 #define MAXLINE 1024
 #define MAXARGS (MAXLINE/2+1)
@@ -18,6 +20,7 @@ void unix_error (char *msg); /* unix-style error */ // grifted from CSAPP
 int parsecmd (char *cmdline, char *argv[], char sep);
 void evalcmd (char *argv[], int bg);
 void signal_handler (int sig);
+char *search_path (const char *name, size_t name_len);
 
 extern char **environ; // array of environment variables from unistd.h
 
@@ -30,6 +33,7 @@ int main () {
     printf("> "); //prompt
     fgets(cmdline, MAXLINE, stdin); //read
     bg = parsecmd(cmdline, argv, ' '); //parse
+    argv[0] = search_path(argv[0], strlen(argv[0]));
     evalcmd(argv, bg); //eval
   }
 }
@@ -116,3 +120,36 @@ void signal_handler (int sig) {
   return;
 }
 
+char *search_path (const char *name, size_t name_len) {
+  char *path = getenv("PATH");
+  char *b = path, *e = path;
+  char *ret = 0;
+  bool found = false;
+  struct dirent *dp;
+  while ((e = strchr(b, ':'))) {
+    char *buf = malloc(sizeof(char) * ((e - b) + 1 + name_len + 1));
+    memcpy(buf, b, (int) (e - b)); // copy dir path
+    buf[e - b] = '\0';
+    DIR *dir = opendir(buf);
+    if (dir) {
+      while ((dp = readdir(dir)) != NULL) {
+        if (dp->d_namlen == name_len && !strcmp(dp->d_name, name)) {
+          found = true;
+          buf[e - b] = '/';
+          memcpy(buf + (int) (e - b) + 1, name, name_len);
+          buf[e - b + 1 + name_len] = '\0';
+          ret = buf;
+          break;
+        }
+      }
+      closedir(dir);
+    }
+    if (found)
+      break;
+    else {
+      free(buf);
+      b = e + 1;
+    }
+  }
+  return ret;
+}
