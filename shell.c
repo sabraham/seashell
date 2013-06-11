@@ -35,6 +35,7 @@ int main () {
     bg = parsecmd(cmdline, argv, ' '); //parse
     argv[0] = search_path(argv[0], strlen(argv[0]));
     evalcmd(argv, bg); //eval
+    free(argv[0]); // free res of search_path
   }
 }
 
