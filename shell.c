@@ -4,16 +4,20 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 #define MAXLINE 1024
 #define MAXARGS (MAXLINE/2+1)
 
+typedef void (*sighandler_t)(int);
+
 pid_t Fork (void);
 int Execve (const char *filename, char *argv[],
             char *envp[]);
-void unix_error(char *msg); /* unix-style error */ // grifted from CSAPP
-int parsecmd(char *cmdline, char *argv[], char sep);
-void evalcmd(char *argv[], int bg);
+void unix_error (char *msg); /* unix-style error */ // grifted from CSAPP
+int parsecmd (char *cmdline, char *argv[], char sep);
+void evalcmd (char *argv[], int bg);
+void signal_handler (int sig);
 
 extern char **environ; // array of environment variables from unistd.h
 
@@ -21,6 +25,7 @@ int main () {
   char cmdline[MAXLINE];
   char *argv[MAXARGS];
   int bg;
+  signal(SIGCHLD, signal_handler);
   while (1) {
     printf("> "); //prompt
     fgets(cmdline, MAXLINE, stdin); //read
@@ -61,14 +66,14 @@ int Waitpid (pid_t pid, int *status, int options) {
 }
 
 int parsecmd (char *cmdline, char *argv[], char sep) {
-  int argc = 0, bg = 0, len = strnlen(cmdline, MAXLINE);
+  int argc = 0, bg = 0, len = strlen(cmdline);
   cmdline[len - 1] = sep; // loop below search & replaces sep with \0
   if (cmdline[len - 2] == '&') {
     bg = 1;
     cmdline[len - 2] = sep;
   }
   char *b = cmdline, *e; // beginning and end arg pointers
-  while ((e = strchr(b, sep)) && argc < MAXARGS-1) { // find separator
+  while ((e = strchr(b, sep)) && argc < MAXARGS - 1) { // find separator
     argv[argc] = b; // set argv
     *e = '\0'; // null terminate char array
     b = e + 1; // move beginning to end
@@ -83,13 +88,31 @@ int parsecmd (char *cmdline, char *argv[], char sep) {
 void evalcmd(char *argv[], int bg) {
   int status;
   pid_t pid;
-  if ((pid = Fork()) == 0) // run cmd as child
+  if ((pid = Fork()) == 0) {// run cmd as child
     Execve(argv[0], argv, environ);
+  }
   if (!bg)
-    Waitpid(pid, &status, 0);
+    waitpid(pid, &status, 0);
   else {
-    Waitpid(pid, &status, WNOHANG);
+    //Waitpid(pid, &status, WNOHANG);
     printf("%d %s\n", pid, argv[0]);
   }
   return;
 }
+
+void signal_handler (int sig) {
+  pid_t pid;
+  int status;
+  while ((pid = waitpid(-1, &status, 0)) > 0) {
+    if (WIFEXITED(status)) {
+      printf("%d exited with status %d\n", pid, WEXITSTATUS(status));
+    } else if (WIFSIGNALED(status)) {
+      printf("%d terminated because of uncaught signal %d\n",
+             pid, WTERMSIG(status));
+    } else if (WIFSTOPPED(status)) {
+      printf("%d stopped by %d\n", pid, WSTOPSIG(status));
+    }
+  }
+  return;
+}
+
